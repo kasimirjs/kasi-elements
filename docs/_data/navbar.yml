@@ -1,0 +1,23 @@
+
+brand_src: "/assets/infracamp.png"
+brand_name: "kasimir"
+brand_href: "/"
+
+main:
+  - name: "Home"
+    href: "/"
+
+  - name: "Inline Template"
+    href: "/inline-tpl/"
+
+  - name: "Include"
+    href: "/include/"
+
+  - name: "Loader"
+    href: "/helper/loader/"
+
+  - name: "Action Button"
+    href: "/helper/action-button/"
+
+
+

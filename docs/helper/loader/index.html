@@ -1,0 +1,19 @@
+---
+title: Loader
+---
+
+
+<script>
+
+    (async() => {
+        let l = new KaToolsV1.Loader();
+        l.show("a", "Loading a");
+        l.show("b", "Loading b");
+        await KaToolsV1.sleep(2000);
+        l.release("a");
+
+        await KaToolsV1.sleep(2000);
+        l.release("b");
+    })();
+
+</script>

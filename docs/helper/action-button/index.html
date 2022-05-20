@@ -1,0 +1,30 @@
+---
+title: Loader
+---
+
+<button id="btn1" class="btn btn-primary">Absenden</button>
+
+<script>
+
+    let ab1 = new KaToolsV1.ActionButton("#btn1", async ($this) => {
+         ab1.disable();
+
+         await KaToolsV1.sleep(2000);
+         ab1.ok("saved");
+    });
+
+</script>
+
+
+<button id="btn2" class="btn btn-primary">Absenden</button>
+
+<script>
+
+    let ab2 = new KaToolsV1.ActionButton("#btn2", async ($this) => {
+         ab2.disable();
+
+         await KaToolsV1.sleep(2000);
+         ab2.enable();
+    });
+
+</script>

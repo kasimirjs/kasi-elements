@@ -1,0 +1,36 @@
+---
+title: Inline Templates
+---
+
+
+
+<h1>ka-inline-template</h1>
+
+| Attribute  | Description     |
+|------------|-----------------|
+| init-scope | Provide Object to set as scope |
+| src        | Load Template (HTML) from external url |
+| interval   | Rerender (including init-scope) each Milliseconds |
+
+
+<h2>Initscope</h2>
+<ka-inline-template init-scope="{demo1: 'Hello World'}">
+    <div>Baisc Usage: [[demo1]]</div>
+</ka-inline-template>
+
+
+<h2>Initscope with Provider</h2>
+<ka-inline-template init-scope="{demo1: await KaToolsV1.provider.get('service1')}">
+    <div>Baisc Usage: [[demo1]]</div>
+</ka-inline-template>
+
+
+<h2>Interval</h2>
+<ka-inline-template interval="1000" init-scope="{time: new Date()}">
+    <div>Baisc Usage: [[time]]</div>
+</ka-inline-template>
+
+
+<script>
+    KaToolsV1.provider.defineValue("service1", "Hello World");
+</script>
