@@ -11,8 +11,12 @@ class KasimirLoader
         "elements/inline-template.js",
         "elements/include.js",
 
+        "styles/init.js",
+        "styles/bootstrap5-modal.js",
+
         "helper/loader.js",
         "helper/action-button.js",
+        "helper/modal.js",
 
     ];
 

@@ -1,0 +1,22 @@
+---
+title: Loader
+---
+
+
+<script>
+
+    KaToolsV1.modal.define("image-chooser", ($tpl, $resolve) => {
+        $tpl.render({$resolve});
+    }, KaToolsV1.html`<div class="modal-body">Hello World</div><div class="modal-footer"><button class="btn btn-primary" ka.on.click="$resolve('Hello')">Save</button></div>`);
+
+
+    (async() => {
+
+        let result = await KaToolsV1.modal.show("image-chooser", {})
+        console.log("result", result);
+    })();
+
+</script>
+
+
+<button class="btn btn-secondary" onclick="KaToolsV1.modal.showChoose('Choose some', [{key: 'ja', text:'Ja'},{key: 'nein', text:'nein'}])">Open Choose</button>

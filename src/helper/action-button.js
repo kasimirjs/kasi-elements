@@ -12,7 +12,6 @@ KaToolsV1.ActionButton = class {
         this.button = selector;
         this._loader = loader.content;
         this._isLoader = false;
-        console.log(this._loader);
 
         if (onclick !== null) {
             selector.addEventListener("click", async (e) => {

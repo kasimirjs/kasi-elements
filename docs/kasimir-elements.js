@@ -135,6 +135,69 @@ customElements.define("ka-include", class extends HTMLElement {
 
 });
 
+/* from styles/init.js */
+
+if (typeof KaToolsV1.style === "undefined")
+    KaToolsV1.style = {};
+
+/* from styles/bootstrap5-modal.js */
+
+KaToolsV1.style.Bootstrap5Modal = class {
+
+    constructor(
+        classes = 'modal-dialog modal-dialog-centered modal-dialog-scrollable'
+    ) {
+        /**
+         *
+         * @type {HTMLElement}
+         */
+        let elem = document.createElement("div");
+        elem.innerHTML = this.constructor._tpl;
+        this.modal = elem.firstElementChild;
+
+        this.modal.querySelector("[area='dialog']").setAttribute("class", classes);
+
+        this._curModal = null;
+        /**
+         *
+         * @type {bootstrap.Modal|null}
+         */
+        this.bsModal = null;
+    }
+
+    setClass(classes = "modal-dialog modal-dialog-centered modal-dialog-scrollable") {
+        this.modal.querySelector("[area='dialog']").setAttribute("class", classes);
+    }
+
+    /**
+     * @return {HTMLTemplateElement}
+     */
+    open(template) {
+        this._curModal = this.modal.cloneNode(true);
+        this._curModal.querySelector("[area='content']").appendChild(template);
+        document.body.appendChild(this._curModal);
+        this.bsModal = new bootstrap.Modal(this._curModal);
+        this.bsModal.show();
+    }
+
+    async dispose() {
+        this.bsModal.hide();
+        await KaToolsV1.sleep(500);
+        document.body.removeChild(this._curModal);
+    }
+
+}
+
+KaToolsV1.style.Bootstrap5Modal._tpl = `
+<div class="modal fade" tabindex="-1">
+  <div class="modal-dialog" area="dialog">
+    <div class="modal-content" area="content">
+    </div>
+  </div>
+</div>
+
+`;
+
 /* from helper/loader.js */
 
 
@@ -190,12 +253,12 @@ KaToolsV1.Loader = class {
 };
 
 KaToolsV1.Loader.tpl = `
-<div role='dialog' class="animated" ka:attr:hidden="queue.length === 0" style="position: fixed; top:0;bottom: 0;right:0;left:0;background-color: rgba(0,0,0,0.3);  z-index: 99999">
+<div role='dialog' class="animated" ka.attr.hidden="queue.length === 0" style="position: fixed; top:0;bottom: 0;right:0;left:0;background-color: rgba(0,0,0,0.3);  z-index: 99999">
     <div class="spinner-border" style="width: 5rem; height: 5rem;position: absolute; top:40%;left:50%;margin-left: -2.5rem" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
-    <div ka:if="queue.length > 0" style="position: absolute; bottom:2px;width: 100%; padding-left:2px; text-align: left;font-size: 8px">
-        <div ka:for="let item in queue">
+    <div ka.if="queue.length > 0" style="position: absolute; bottom:2px;width: 100%; padding-left:2px; text-align: left;font-size: 8px">
+        <div ka.for="let item in queue">
             [[parseInt(item)+1]] / [[queue.length]] [[queue[item].jobtitle]]...
         </div>
 
@@ -219,7 +282,6 @@ KaToolsV1.ActionButton = class {
         this.button = selector;
         this._loader = loader.content;
         this._isLoader = false;
-        console.log(this._loader);
 
         if (onclick !== null) {
             selector.addEventListener("click", async (e) => {
@@ -259,3 +321,93 @@ KaToolsV1.ActionButton = class {
 
 
 };
+
+/* from helper/modal.js */
+
+KaToolsV1.modal = new class {
+
+    constructor () {
+
+        /**
+         *
+         * @type {}
+         * @private
+         */
+        this._modals = {}
+    }
+
+    /**
+     * Define a Modal Window
+     *
+     * @param name {string}
+     * @param fn {function}
+     * @param $tpl {HTMLTemplateElement}
+     * @param options {{style: *}}
+     */
+    define(name, fn, $tpl, options={style: new KaToolsV1.style.Bootstrap5Modal()}) {
+        this._modals[name] = {fn, $tpl, options};
+    }
+
+
+    /**
+     * Show a Modal
+     *
+     * @param name
+     * @param $args
+     * @return {Promise<unknown>}
+     */
+    show(name, $args = {}) {
+        let modal = this._modals[name];
+        if (typeof modal === "undefined")
+            throw "Undefined modal: " + modal;
+
+        return new Promise(async (resolve, reject) => {
+            let style = modal.options.style;
+            let tpl = KaToolsV1.templatify(modal.$tpl);
+            style.open(tpl);
+
+            let $resolve = () => {
+                resolve(...arguments);
+                style.dispose();
+            }
+            let $reject = () => {
+                reject(...arguments);
+                style.dispose();
+            }
+
+            modal.fn(... await KaToolsV1.provider.arguments(modal.fn, {
+                $resolve,
+                $reject,
+                $tpl: new KaToolsV1.Template(tpl),
+                $args
+            }))
+        })
+    }
+
+
+    async showChoose(title, buttons = [{key: 'ok', text: 'OK'}], content = null) {
+        return this.show("--choose", {
+            title, buttons, content
+        })
+    }
+
+}();
+
+
+
+KaToolsV1.modal.define("--choose", ($tpl, $args, $resolve, $reject) => {
+    $tpl.render({
+        $resolve, $reject, ...$args
+    })
+}, KaToolsV1.html`
+<div class="modal-header">
+    <h5 class="modal-title">[[title]]</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div ka.if="content !== null" class="modal-content" ka.htmlcontent="content">
+
+</div>
+<div class="modal-footer">
+    <button class="btn" ka.for="let btnIdx in buttons" ka.classlist.btn-primary="btnIdx == 0" ka.classlist.btn-secondary="btnIdx > 0" ka.on.click="$resolve(buttons[btnIdx].key)" >[[buttons[btnIdx].text]]</button>
+</div>
+`);

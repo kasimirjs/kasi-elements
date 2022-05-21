@@ -131,8 +131,6 @@ KaToolsV1.eval = (stmt, __scope, e, __refs) => {
     }
 }
 
-/* from core/quick-template.js */
-
 /* from core/apply.js */
 
 KaToolsV1.apply = (selector, scope, recursive=false) => {
@@ -146,14 +144,14 @@ KaToolsV1.apply = (selector, scope, recursive=false) => {
 
     for(let attName of selector.getAttributeNames()) {
         //console.log(attName);
-        if ( ! attName.startsWith("ka:")) {
+        if ( ! attName.startsWith("ka.")) {
             continue;
         }
 
         let attVal = selector.getAttribute(attName);
 
-        let attType = attName.split(":")[1];
-        let attSelector = attName.split(":")[2];
+        let attType = attName.split(".")[1];
+        let attSelector = attName.split(".")[2];
         if (typeof attSelector === "undefined")
             attSelector = null;
 
@@ -392,7 +390,7 @@ KaToolsV1.templatify = (elem, returnMode=true) => {
         returnTpl.setAttribute("_kaidx", (KaToolsV1._ka_el_idx++).toString())
         /* @var {HTMLTemplateElement} returnTpl */
         returnTpl.innerHTML = elem.innerHTML
-            .replaceAll(/\[\[(.*?)\]\]/g, (matches, m1) => `<span ka:textContent="${m1}"></span>`);
+            .replaceAll(/\[\[(.*?)\]\]/g, (matches, m1) => `<span ka.textContent="${m1}"></span>`);
 
         KaToolsV1.templatify(returnTpl.content, false);
         return returnTpl;
@@ -418,13 +416,13 @@ KaToolsV1.templatify = (elem, returnMode=true) => {
             return;
         let tpl = null;
         for (let attrName of el.getAttributeNames()) {
-            if (attrName === "ka:for") {
-                tpl = wrapElem(el, "ka:for", el.getAttribute("ka:for"));
+            if (attrName === "ka.for") {
+                tpl = wrapElem(el, "ka.for", el.getAttribute("ka.for"));
                 KaToolsV1.templatify(tpl, false);
                 break;
             }
-            if (attrName === "ka:if") {
-                tpl = wrapElem(el, "ka:if", el.getAttribute("ka:if"));
+            if (attrName === "ka.if") {
+                tpl = wrapElem(el, "ka.if", el.getAttribute("ka.if"));
                 KaToolsV1.templatify(tpl, false);
                 break;
             }
@@ -481,9 +479,9 @@ KaToolsV1.Template = class {
         //console.log("kachilds", this.template.__kachilds);
 
 
-        let matches = stmt.match(/^(let)\s+(?<target>.+)\s+(?<type>of|in)\s+(?<select>.+)$/);
+        let matches = stmt.match(/^(let)?\s*(?<target>.+)\s+(?<type>of|in)\s+(?<select>.+)$/);
         if (matches === null) {
-            this._error(`Can't parse ka:for='${stmt}'`);
+            this._error(`Can't parse ka.for='${stmt}'`);
         }
         let selectVal = KaToolsV1.eval(matches.groups.select, $scope, this.template);
         let eIndex = 0;
@@ -541,6 +539,7 @@ KaToolsV1.Template = class {
             this._removeLastChild();
         }
     }
+
     /**
      * Remove all rendered elements
      */
@@ -548,6 +547,7 @@ KaToolsV1.Template = class {
         for(;this.template.__kachilds.length > 0;)
             this._removeLastChild();
     }
+
 
     /**
      * Render / Update the Template
@@ -562,10 +562,10 @@ KaToolsV1.Template = class {
             $scope = this.$scope;
         this.$scope = $scope;
 
-        if (this.template.hasAttribute("ka:for")) {
-            this._renderFor($scope, this.template.getAttribute("ka:for"));
-        } else if (this.template.hasAttribute("ka:if")) {
-            this._renderIf($scope, this.template.getAttribute("ka:if"));
+        if (this.template.hasAttribute("ka.for")) {
+            this._renderFor($scope, this.template.getAttribute("ka.for"));
+        } else if (this.template.hasAttribute("ka.if")) {
+            this._renderIf($scope, this.template.getAttribute("ka.if"));
         } else {
             if (typeof this.template._ka_active === "undefined") {
                 this._appendTemplate();
@@ -745,6 +745,7 @@ KaToolsV1.ce_define = async (elementName, controller, template=null, options={wa
     let ctrlClass = null;
     if ( KaToolsV1.is_constructor(controller)) {
         ctrlClass = controller;
+        ctrlClass.__callback = ctrlClass.prototype.connected;
     } else {
         ctrlClass = class extends KaToolsV1.CustomElement{};
         ctrlClass.__callback = controller;
@@ -767,6 +768,11 @@ KaToolsV1.html = (htmlContent) => {
 }
 
 /* from ce/loadHtml.js */
+/**
+ *
+ * @param url {string}
+ * @return {Promise<HTMLTemplateElement>}
+ */
 KaToolsV1.loadHtml = async (url) => {
     let e = document.createElement("template");
     let result = await fetch(url);
