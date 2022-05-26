@@ -46,10 +46,15 @@ customElements.define("ka-inline-template", class extends HTMLElement {
         if (this.hasAttribute("interval")) {
             this._interval = window.setInterval(async () => {
                 let scope = await this._loadScope();
+                // If element is marked as hidden - remove hidden
+                if (this.hasAttribute("hidden"))
+                    this.removeAttribute("hidden");
                 tpl.render(scope);
             }, parseInt(this.getAttribute("interval")));
         }
-
+        // If element is marked as hidden - remove hidden
+        if (this.hasAttribute("hidden"))
+            this.removeAttribute("hidden");
         tpl.render(scope);
 
     }

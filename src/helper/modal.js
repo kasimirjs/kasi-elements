@@ -41,11 +41,11 @@ KaToolsV1.modal = new class {
             let tpl = KaToolsV1.templatify(modal.$tpl);
             style.open(tpl);
 
-            let $resolve = () => {
+            let $resolve = function() {
                 resolve(...arguments);
                 style.dispose();
             }
-            let $reject = () => {
+            let $reject = function() {
                 reject(...arguments);
                 style.dispose();
             }

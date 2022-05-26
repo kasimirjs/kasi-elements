@@ -65,10 +65,15 @@ customElements.define("ka-inline-template", class extends HTMLElement {
         if (this.hasAttribute("interval")) {
             this._interval = window.setInterval(async () => {
                 let scope = await this._loadScope();
+                // If element is marked as hidden - remove hidden
+                if (this.hasAttribute("hidden"))
+                    this.removeAttribute("hidden");
                 tpl.render(scope);
             }, parseInt(this.getAttribute("interval")));
         }
-
+        // If element is marked as hidden - remove hidden
+        if (this.hasAttribute("hidden"))
+            this.removeAttribute("hidden");
         tpl.render(scope);
 
     }
@@ -366,11 +371,11 @@ KaToolsV1.modal = new class {
             let tpl = KaToolsV1.templatify(modal.$tpl);
             style.open(tpl);
 
-            let $resolve = () => {
+            let $resolve = function() {
                 resolve(...arguments);
                 style.dispose();
             }
-            let $reject = () => {
+            let $reject = function() {
                 reject(...arguments);
                 style.dispose();
             }
