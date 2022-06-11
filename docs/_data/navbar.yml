@@ -21,5 +21,7 @@ main:
 
   - name: "Modal"
     href: "/helper/modal/"
+  - name: "Tpl"
+    href: "/tpl/"
 
 

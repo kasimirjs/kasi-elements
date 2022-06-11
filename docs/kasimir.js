@@ -131,6 +131,22 @@ KaToolsV1.eval = (stmt, __scope, e, __refs) => {
     }
 }
 
+/* from core/str-to-camelcase.js */
+/**
+ * Transform any input to CamelCase
+ *
+ * Example: some-class => someClass
+ *
+ * @param str {string}
+ * @return {string}
+ */
+KaToolsV1.strToCamelCase = function (str) {
+    return str.replace(/(?:^\w|[A-Z]|\b\w|\s+)/g, function(match, index) {
+        if (+match === 0) return ""; // or if (/\s+/.test(match)) for white spaces
+        return index === 0 ? match.toLowerCase() : match.toUpperCase();
+    });
+}
+
 /* from core/apply.js */
 
 KaToolsV1.apply = (selector, scope, recursive=false) => {
@@ -156,36 +172,54 @@ KaToolsV1.apply = (selector, scope, recursive=false) => {
             attSelector = null;
 
 
+        let registerEventHandler = function(element, action, callbackOrCode, scope) {
+            if (typeof element._ka_on === "undefined")
+                element._ka_on = {};
+
+            if (typeof element._ka_on[action] === "undefined")
+                element.addEventListener(action, (e) => element._ka_on[action](e));
+
+            element._ka_on[action] = async(e) => {
+                scope["$event"] = e;
+                if (typeof callbackOrCode === "function") {
+                    return callbackOrCode(... await KaToolsV1.provider.arguments(callbackOrCode, {
+                        ...scope,
+                        "$event": e,
+                        "$this": element,
+                        "$scope": scope
+                    }));
+                } else {
+                    return KaToolsV1.eval(callbackOrCode, scope, element);
+                }
+            };
+        }
+
         if (attType === "on") {
-            if (selector._ka_on === true)
-                continue;
             let attScope = {$scope: scope, ...scope}
             if (attSelector !== null) {
-
-                selector.addEventListener(attSelector, (e) => {
-                    attScope["$event"] = e;
-                    return KaToolsV1.eval(attVal, attScope, selector);
-                });
+                registerEventHandler(selector, attSelector, attVal, attScope);
             } else {
-                let actionArr = KaToolsV1.eval(attVal, attScope, selector)
-                for (let eventName in actionArr) {
-                    selector.addEventListener(eventName, (e) => {
-                        attScope["$event"] = e;
-                        return actionArr[eventName](attScope, e);
-                    });
+                let callBackMap = KaToolsV1.eval(attVal, attScope, selector);
+                for(let curAction in callBackMap) {
+                    registerEventHandler(selector, curAction, callBackMap[curAction], attScope);
                 }
+
             }
-            selector._ka_on = true;
             continue;
         }
 
-        let r = KaToolsV1.eval(attVal, scope, selector);
+        let r = null;
+        if (typeof attVal !== "undefined" && typeof attVal !== null && attVal !== "")
+            r = KaToolsV1.eval(attVal, scope, selector);
 
         switch (attType) {
             case "ref":
                 if (typeof scope.$ref === "undefined")
                     scope.$ref = {};
-                scope.$ref[r] = selector;
+                // Allow ref without parameter to use $ref.$last
+                if (r !== null)
+                    scope.$ref[r] = selector;
+                scope.$ref.$last = selector;
                 break;
 
             case "classlist":
@@ -206,9 +240,29 @@ KaToolsV1.apply = (selector, scope, recursive=false) => {
                 }
                 break;
 
+            case "style":
+                if (attSelector  !== null) {
 
+                    selector.style[KaToolsV1.strToCamelCase(attSelector)] = r;
+                    break;
+                }
+                for (let cname in r) {
+                    selector.style[KaToolsV1.strToCamelCase(cname)] = r[cname];
+                }
+                break;
 
             case "bindarray":
+                if (attSelector === "default")
+                    continue;
+                if (typeof r === "undefined") {
+                    // Bind default values
+                    if (selector.hasAttribute("ka.bind.default")) {
+                        scope = {$scope: scope, ...scope};
+                        scope = {$scope: scope, ...scope, __curVal: KaToolsV1.eval(selector.getAttribute("ka.bind.default"), scope, selector)}
+                        KaToolsV1.eval(`${attVal} = __curVal`, scope, selector);
+                        r = scope.__curVal;
+                    }
+                }
                 if ( ! Array.isArray(r)) {
                     console.error("kap:bindarr: Not an array!", r, selector);
                     return;
@@ -237,11 +291,29 @@ KaToolsV1.apply = (selector, scope, recursive=false) => {
                 break;
 
             case "bind":
+                if (attSelector === "default")
+                    continue;
+                if (typeof r === "undefined") {
+                    // Bind default values
+                    if (selector.hasAttribute("ka.bind.default")) {
+                        scope = {$scope: scope, ...scope};
+                        scope = {$scope: scope, ...scope, __curVal: KaToolsV1.eval(selector.getAttribute("ka.bind.default"), scope, selector)}
+                        KaToolsV1.eval(`${attVal} = __curVal`, scope, selector);
+                        r = scope.__curVal;
+                    }
+                }
                 if (selector.type === "checkbox" || selector.type === "radio") {
-                    if (r === true)
-                        selector.checked = true;
-                    else
-                        selector.checked = false;
+                    if (selector.hasAttribute("value")) {
+                        if (r === selector.getAttribute("value"))
+                            selector.checked = true;
+                        else
+                            selector.checked = false;
+                    } else {
+                        if (r === true)
+                            selector.checked = true;
+                        else
+                            selector.checked = false;
+                    }
                 } else {
                     selector.value = typeof r !== "undefined" ? r : "";
                 }
@@ -251,7 +323,13 @@ KaToolsV1.apply = (selector, scope, recursive=false) => {
 
                         let value = null;
                         if (selector.type === "checkbox" || selector.type === "radio") {
-                            value = selector.checked
+                            if (selector.hasAttribute("value")) {
+                                if (selector.checked === false)
+                                    return;
+                                value = selector.getAttribute("value");
+                            } else {
+                                value = selector.checked
+                            }
                         } else {
                             value = selector.value
                         }
@@ -272,7 +350,6 @@ KaToolsV1.apply = (selector, scope, recursive=false) => {
                 break;
 
             case "options":
-                console.log(selector, selector.value);
                 let value = selector.value;
                 selector.innerHTML = "";
                 for (let option in r) {
@@ -305,6 +382,17 @@ KaToolsV1.apply = (selector, scope, recursive=false) => {
                     } else {
                         selector.setAttribute(cname, r[cname]);
                     }
+                }
+                break;
+
+            case "prop":
+                if (attSelector  !== null) {
+                    // Set Property directly
+                    selector[attSelector] = r;
+                    break;
+                }
+                for (let cname in r) {
+                    selector[cname] = r[cname];
                 }
                 break;
 
@@ -390,7 +478,7 @@ KaToolsV1.templatify = (elem, returnMode=true) => {
         returnTpl.setAttribute("_kaidx", (KaToolsV1._ka_el_idx++).toString())
         /* @var {HTMLTemplateElement} returnTpl */
         returnTpl.innerHTML = elem.innerHTML
-            .replaceAll(/\[\[(.*?)\]\]/g, (matches, m1) => `<span ka.textContent="${m1}"></span>`);
+            .replace(/\[\[(.*?)\]\]/g, (matches, m1) => `<span ka.textContent="${m1}"></span>`);
 
         KaToolsV1.templatify(returnTpl.content, false);
         return returnTpl;
@@ -477,13 +565,18 @@ KaToolsV1.Template = class {
 
     _renderFor($scope, stmt) {
         //console.log("kachilds", this.template.__kachilds);
-
-
-        let matches = stmt.match(/^(let)?\s*(?<target>.+)\s+(?<type>of|in)\s+(?<select>.+)$/);
+        let matches = stmt.match(/^(let)?\s*(?<target>.+)\s+(?<type>of|in|repeat)\s+(?<select>.+)$/);
         if (matches === null) {
             this._error(`Can't parse ka.for='${stmt}'`);
         }
         let selectVal = KaToolsV1.eval(matches.groups.select, $scope, this.template);
+
+        if (matches.groups.type === "repeat") {
+            if (typeof selectVal !== "number")
+                this._error(`Error ka.for='${stmt}': Selected val must be number in repeat loop`);
+            selectVal = new Array(selectVal).fill(null);
+        }
+
         let eIndex = 0;
         for (let index in selectVal) {
             let curScope = {$scope: $scope, ...$scope};
@@ -496,7 +589,7 @@ KaToolsV1.Template = class {
                 //console.log("append", eIndex, this.template.__kachilds.length);
                 this._appendTemplate();
             }
-            this._maintain(curScope, this.template.__kachilds[eIndex]);
+            this._maintain(curScope, this.template.__kachilds[eIndex], eIndex);
             eIndex++;
         }
         for(let remIdx = eIndex; remIdx < this.template.__kachilds.length; ) {
@@ -505,8 +598,9 @@ KaToolsV1.Template = class {
 
     }
 
-    _maintain($scope, childs) {
+    _maintain($scope, childs, forIndex=0) {
         for (let child of childs) {
+            child._ka_for_index = forIndex;
             KaToolsV1.elwalk(child, (el) => {
                 //console.log("walk", el);
                 if (el instanceof HTMLTemplateElement) {
@@ -745,7 +839,7 @@ KaToolsV1.ce_define = async (elementName, controller, template=null, options={wa
     let ctrlClass = null;
     if ( KaToolsV1.is_constructor(controller)) {
         ctrlClass = controller;
-        ctrlClass.__callback = ctrlClass.prototype.connected;
+        ctrlClass.__callback = null;
     } else {
         ctrlClass = class extends KaToolsV1.CustomElement{};
         ctrlClass.__callback = controller;
@@ -767,7 +861,37 @@ KaToolsV1.html = (htmlContent) => {
     return e;
 }
 
+/* from ce/htmlFile.js */
+KaToolsV1.RemoteTemplate = class {
+    constructor(url) {
+        this.url = url;
+        this.tpl = null;
+    }
+
+    /**
+     *
+     * @return {Promise<HTMLTemplateElement>}
+     */
+    async load() {
+        if (this.tpl === null)
+            this.tpl = await KaToolsV1.loadHtml(this.url);
+        return this.tpl;
+    }
+}
+
+
+/**
+ * Load the Template on usage from remote location
+ *
+ *
+ * @param url {string}
+ * @return {KaToolsV1.RemoteTemplate}
+ */
+KaToolsV1.htmlUrl = (url) => new KaToolsV1.RemoteTemplate(url);
+
 /* from ce/loadHtml.js */
+
+
 /**
  *
  * @param url {string}
@@ -793,13 +917,22 @@ KaToolsV1.CustomElement = class extends HTMLElement {
         super(props);
         /**
          *
-         * @protected
-         * @type {KaToolsV1.Template}
+         * @public
+         * @property $tpl {KaToolsV1.Template}
+         * @var {KaToolsV1.Template}
          */
-        this.$tpl = null;
-
+        this.__tpl = null;
 
         this.__isConnected = false;
+    }
+
+    /**
+     * The Template associated with this Element
+     *
+     * @return {KaToolsV1.Template}
+     */
+    get $tpl () {
+        return this.__tpl
     }
 
 
@@ -807,17 +940,31 @@ KaToolsV1.CustomElement = class extends HTMLElement {
         return this.isConnected;
     }
 
+    /**
+     * @abstract
+     * @return {Promise<void>}
+     */
+    async connected() {
+        console.warn("connected() method not overridden in", this);
+    }
+
     async connectedCallback() {
         let callback = this.constructor.__callback;
-        callback.bind(this);
-
-        console.log("Loading", this, callback);
-        if (this.constructor.__tpl !== null) {
-            let tpl = KaToolsV1.templatify(this.constructor.__tpl);
-            this.appendChild(tpl);
-            this.$tpl = new KaToolsV1.Template(tpl);
-            console.log("Tpl is", tpl);
+        if (callback === null) {
+        } else {
+            callback.bind(this);
         }
+
+        if (this.constructor.__tpl !== null) {
+            let origTpl = this.constructor.__tpl;
+            if (origTpl instanceof KaToolsV1.RemoteTemplate)
+                origTpl = await origTpl.load();
+
+            let tpl = KaToolsV1.templatify(origTpl);
+            this.appendChild(tpl);
+            this.__tpl = new KaToolsV1.Template(tpl);
+        }
+
         if (this.constructor.__options.waitEvent !== null) {
             let wd = this.constructor.__options.waitEvent.split("@");
             let eventName = wd[0];
@@ -836,7 +983,17 @@ KaToolsV1.CustomElement = class extends HTMLElement {
             return;
         }
 
-        console.log("trigger");
+        if (callback === null) {
+            // Class: Call connected() Method
+            this.connected(...await KaToolsV1.provider.arguments(this.connected, {
+                "$this": this,
+                "$tpl": this.$tpl
+            }));
+            this.__isConnected = true;
+            return
+        }
+
+        // Function
         callback(... await KaToolsV1.provider.arguments(callback, {
             "$this": this,
             "$tpl": this.$tpl

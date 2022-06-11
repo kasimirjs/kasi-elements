@@ -4,6 +4,9 @@ title: Modal windows
 
 <script>
 
-    let modal = new KaToolsV1.Modal();
+KaToolsV1.modal.define("demo-modal", function($tpl) {
+    $tpl.render({});
+}, KaToolsV1.htmlUrl("/modal/demo.tpl.html"));
 
+KaToolsV1.modal.show("demo-modal");
 </script>

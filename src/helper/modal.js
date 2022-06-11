@@ -34,11 +34,16 @@ KaToolsV1.modal = new class {
     show(name, $args = {}) {
         let modal = this._modals[name];
         if (typeof modal === "undefined")
-            throw "Undefined modal: " + modal;
+            throw `Undefined modal: '${name}'`;
 
         return new Promise(async (resolve, reject) => {
             let style = modal.options.style;
-            let tpl = KaToolsV1.templatify(modal.$tpl);
+
+            let origTpl = modal.$tpl;
+            if (modal.$tpl instanceof KaToolsV1.RemoteTemplate)
+                origTpl = await modal.$tpl.load();
+
+            let tpl = KaToolsV1.templatify(origTpl);
             style.open(tpl);
 
             let $resolve = function() {
