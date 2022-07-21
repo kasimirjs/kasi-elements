@@ -14,8 +14,16 @@ KaToolsV1.modal = new class {
     /**
      * Define a Modal Window
      *
+     * <example>
+     * KaToolsV1.modal.define("modal1", ($tpl, $args, $resolve, $reject) => {
+     *       $tpl.render({
+     *           $resolve, $reject, ...$args
+     *       })
+     * }, KaToolsV1.html``);
+     * </example>
+     *
      * @param name {string}
-     * @param fn {function}
+     * @param fn {function($tpl : KaToolsV1.Template, $args : {}, $resolve : function(...params), $reject : function(...params))}
      * @param $tpl {HTMLTemplateElement}
      * @param options {{style: *}}
      */
