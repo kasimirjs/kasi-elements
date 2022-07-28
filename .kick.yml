@@ -1,5 +1,5 @@
 version: 1
-from: "ghcr.io/nfra-project/kickstart-flavor-php:8.0"
+from: "ghcr.io/nfra-project/kickstart-flavor-php:8.1"
 ports: "80:80;4000:4000;4100:4100"
 
 packages: [jekyll, ruby-jekyll-coffeescript, ruby-jekyll-optional-front-matter]
