@@ -2,11 +2,15 @@
   "name": "kasimir-elements",
   "version": "1.0.0",
   "description": "Interactive Frontend Elements",
-  "main": "./src/index.js",
+  "main": "dist/index",
+  "module": "src/index.ts",
+  "type": "module",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
+    "watch": "esbuild src/demo.ts --bundle --serve=0.0.0.0:4000 --outdir=docs/js --servedir=docs",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -18,9 +22,12 @@
   "bugs": {
     "url": "https://github.com/kasimirjs/kasi-elements/issues"
   },
+  "workspaces": [
+    "workspaces/*"
+  ],
   "homepage": "https://github.com/kasimirjs/kasi-elements#readme",
   "dependencies": {
-    "webpack": "^5.74.0"
+    "@kasimirjs/embed": "git+https://github.com/kasimirjs/kasi-embed.git#main"
   },
   "devDependencies": {
     "webpack-cli": "^4.10.0"
